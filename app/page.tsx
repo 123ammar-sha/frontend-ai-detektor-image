@@ -34,7 +34,7 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/detect", {
+      const response = await fetch("https://ammarshafiy123-api-ai-detektor.hf.space/api/detect", {
         method: "POST",
         body: formData,
       });
