@@ -217,16 +217,12 @@ export default function Home() {
       // Simulate ELA step timing
       await new Promise(r => setTimeout(r, 800));
       setStep(3);
-      const response = await fetch("https://ammarshafiy123-api-ai-detektor.hf.space/api/detect", {
-        method: "POST",
-        body: formData,
-      });
 
-      const response = await fetch(
+      const res = await fetch(
         "https://ammarshafiy123-api-ai-detektor.hf.space/api/detect",
         { method: "POST", body: formData }
       );
-      const data = await response.json();
+      const data = await res.json();
 
       setStep(4);
       await new Promise(r => setTimeout(r, 400));
