@@ -2,20 +2,19 @@
 
 import { useState, useRef, useEffect } from "react";
 
-// ── Types ────────────────────────────────────────────────────
+// ── Types (Disesuaikan dengan API v2.2) ──────────────────────
 interface DetectionResult {
   status: string;
   akurasi_prediksi: string;
   dimensi_input: string;
   skor_mentah: number;
-  skor_ai?: number;
-  skor_real?: number;
-  metadata_kamera?: boolean;
+  skor_ai: number;
+  skor_real: number;
   catatan?: string;
   model_version?: string;
 }
 
-// ── SVG Icons (natural, non-AI looking) ─────────────────────
+// ── SVG Icons ────────────────────────────────────────────────
 const IconCamera = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
@@ -49,12 +48,6 @@ const IconSearch = () => (
   </svg>
 );
 
-const IconShield = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-  </svg>
-);
-
 const IconLayers = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="12 2 2 7 12 12 22 7 12 2"/>
@@ -78,7 +71,7 @@ const IconInfo = () => (
 );
 
 // ── Process Step ─────────────────────────────────────────────
-function ProcessStep({ step, icon, label, sublabel, active, done, last }: {
+function ProcessStep({ icon, label, sublabel, active, done, last }: {
   step: number; icon: React.ReactNode; label: string; sublabel: string;
   active: boolean; done: boolean; last?: boolean;
 }) {
@@ -245,7 +238,7 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      await new Promise(r => setTimeout(r, 700));
+      await new Promise(r => setTimeout(r, 600));
       setStep(3);
 
       const res = await fetch(
@@ -254,13 +247,11 @@ export default function Home() {
       );
       const data = await res.json();
 
-      setStep(4);
-      await new Promise(r => setTimeout(r, 400));
-
       if (data.error) {
         setErrorMsg(data.error);
         setStep(1);
       } else {
+        setStep(4);
         setResult(data);
       }
     } catch {
@@ -271,18 +262,11 @@ export default function Home() {
     }
   };
 
-  // ── Compute scores ──
-  const isReal     = result?.status.includes("Asli");
-  const exifFound  = result?.metadata_kamera === true;
-
-  // Kalau EXIF ditemukan → override ke Real
-  const finalIsReal = exifFound ? true : isReal;
-
-  const rawAI      = result?.skor_ai   ?? 0;
-  const rawReal    = result?.skor_real ?? 0;
-  const scoreAI    = exifFound ? Math.min(rawAI, 25)    : rawAI;
-  const scoreReal  = exifFound ? Math.max(rawReal, 75)  : rawReal;
-  const confidence = finalIsReal ? scoreReal : scoreAI;
+  // ── Inferensi Hasil Murni Berdasarkan Status dari API v2.2 ──
+  const finalIsReal = result?.status.includes("Asli");
+  const scoreAI     = result?.skor_ai   ?? 0;
+  const scoreReal    = result?.skor_real ?? 0;
+  const confidence   = finalIsReal ? scoreReal : scoreAI;
 
   return (
     <main
@@ -304,7 +288,7 @@ export default function Home() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-[#161b22] border border-[#30363d] rounded-full px-4 py-1.5 text-xs text-cyan-400 mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            ELA + EfficientNetB0 · Val Accuracy 86.7%
+            Murni ELA + EfficientNetB0 · Ver 2.2
           </div>
           <h1 className="text-4xl font-black tracking-tight mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             <span className="text-white">AI Image</span>{" "}
@@ -313,8 +297,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-[#8b949e] text-sm max-w-lg mx-auto leading-relaxed">
-            Forensik digital berbasis <span className="text-cyan-400">Error Level Analysis</span> untuk
-            membedakan foto kamera asli dari citra buatan AI generatif.
+            Forensik digital murni berbasis jaringan saraf tiruan konvolusional untuk membedakan struktur kompresi citra asli dan manipulasi AI.
           </p>
         </div>
 
@@ -365,12 +348,12 @@ export default function Home() {
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Menganalisis...
+                  Mengekstrak Laten...
                 </span>
-              ) : "Analisis Gambar"}
+              ) : "Analisis Kompresi"}
             </button>
 
-            {/* Error */}
+            {/* Error Message */}
             {errorMsg && (
               <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm text-center flex items-center justify-center gap-2">
                 <IconInfo />
@@ -378,7 +361,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* Result */}
+            {/* Result Panel */}
             {result && (
               <div className={`rounded-xl border overflow-hidden ${
                 finalIsReal ? "border-emerald-500/30" : "border-red-500/30"
@@ -389,16 +372,11 @@ export default function Home() {
                   finalIsReal ? "border-emerald-500/20" : "border-red-500/20"
                 }`}>
                   <div>
-                    <p className="text-xs text-[#8b949e] uppercase tracking-widest mb-1">Hasil Deteksi</p>
+                    <p className="text-xs text-[#8b949e] uppercase tracking-widest mb-1">Hasil Eksperimen Pure Model</p>
                     <p className={`text-xl font-black ${finalIsReal ? "text-emerald-400" : "text-red-400"}`}
                        style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {finalIsReal ? "Foto Asli / Kamera" : "Buatan AI"}
+                      {finalIsReal ? "Asli Kamera (Real)" : "Buatan AI (Generated)"}
                     </p>
-                    {exifFound && (
-                      <p className="text-xs text-cyan-400 mt-1 flex items-center gap-1">
-                        <IconShield /> Metadata kamera terdeteksi — dikonfirmasi foto asli
-                      </p>
-                    )}
                   </div>
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
                     finalIsReal
@@ -414,13 +392,13 @@ export default function Home() {
                   <div className={`p-4 rounded-lg border ${
                     finalIsReal ? "bg-emerald-500/10 border-emerald-500/20" : "bg-red-500/10 border-red-500/20"
                   }`}>
-                    <p className="text-xs text-[#8b949e] mb-1">Tingkat Keyakinan</p>
+                    <p className="text-xs text-[#8b949e] mb-1">Tingkat Probabilitas Model</p>
                     <div className="flex items-end gap-2">
                       <span className={`text-3xl font-black font-mono ${finalIsReal ? "text-emerald-400" : "text-red-400"}`}>
                         {confidence.toFixed(1)}%
                       </span>
                       <span className="text-xs text-[#484f58] mb-1">
-                        {finalIsReal ? "yakin foto asli" : "yakin buatan AI"}
+                        {finalIsReal ? "karakteristik spasial alami" : "karakteristik sintesis generator"}
                       </span>
                     </div>
                     {/* Main bar */}
@@ -435,13 +413,13 @@ export default function Home() {
                   {/* Dual score bars */}
                   <div className="space-y-3">
                     <ScoreBar
-                      label="Probabilitas Foto Asli (Real)"
+                      label="Akurasi Citra Alami (Real Score)"
                       value={scoreReal}
                       colorClass="bg-emerald-500"
                       textColor="text-emerald-400"
                     />
                     <ScoreBar
-                      label="Probabilitas Buatan AI"
+                      label="Akurasi Citra Sintetis (AI Score)"
                       value={scoreAI}
                       colorClass="bg-red-500"
                       textColor="text-red-400"
@@ -449,38 +427,22 @@ export default function Home() {
                   </div>
 
                   {/* Meta grid */}
-                  <div className="grid grid-cols-3 gap-2 pt-1">
+                  <div className="grid grid-cols-2 gap-2 pt-1">
                     <div className="bg-[#0d1117] rounded-lg p-3 border border-[#21262d]">
-                      <p className="text-xs text-[#484f58] mb-1">Dimensi</p>
+                      <p className="text-xs text-[#484f58] mb-1">Dimensi Input Tensor</p>
                       <p className="font-mono text-xs text-white">{result.dimensi_input}</p>
                     </div>
-                    <div className={`rounded-lg p-3 border ${exifFound ? "bg-emerald-500/10 border-emerald-500/30" : "bg-[#0d1117] border-[#21262d]"}`}>
-                      <p className="text-xs text-[#484f58] mb-1">Metadata EXIF</p>
-                      <p className={`font-mono text-xs font-bold ${exifFound ? "text-emerald-400" : "text-[#484f58]"}`}>
-                        {exifFound ? "Ditemukan" : "Tidak ada"}
-                      </p>
-                    </div>
                     <div className="bg-[#0d1117] rounded-lg p-3 border border-[#21262d]">
-                      <p className="text-xs text-[#484f58] mb-1">Skor Raw</p>
-                      <p className="font-mono text-xs text-white">{result.skor_mentah?.toFixed(3)}</p>
+                      <p className="text-xs text-[#484f58] mb-1">Output Sigmoid (Raw Value)</p>
+                      <p className="font-mono text-xs text-white">{result.skor_mentah?.toFixed(4)}</p>
                     </div>
                   </div>
 
-                  {/* Catatan */}
+                  {/* Catatan Pelacakan */}
                   {result.catatan && (
                     <div className="bg-[#0d1117] rounded-lg p-3 border border-[#21262d] flex items-start gap-2">
                       <span className="text-cyan-400 mt-0.5 flex-shrink-0"><IconInfo /></span>
                       <p className="font-mono text-xs text-[#8b949e] leading-relaxed">{result.catatan}</p>
-                    </div>
-                  )}
-
-                  {/* WA warning kalau tidak ada EXIF */}
-                  {!exifFound && finalIsReal && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-start gap-2">
-                      <span className="text-amber-400 mt-0.5 flex-shrink-0"><IconInfo /></span>
-                      <p className="text-xs text-amber-300/80 leading-relaxed">
-                        Metadata kamera tidak ditemukan. Jika foto dikirim via WhatsApp, Instagram, atau media sosial lain, metadata EXIF mungkin sudah dihapus oleh platform tersebut.
-                      </p>
                     </div>
                   )}
                 </div>
@@ -488,30 +450,28 @@ export default function Home() {
             )}
           </div>
 
-          {/* ── RIGHT ── */}
+          {/* ── RIGHT (Pipeline Deteksi Jurnal) ── */}
           <div className="space-y-4">
 
             {/* Process Steps */}
             <div className="rounded-xl border border-[#21262d] p-5" style={{ background: "#161b22" }}>
-              <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-5">Proses Deteksi</p>
+              <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-5">Alur Inferensi Sistem</p>
               <div className="space-y-0">
-                <ProcessStep step={1} icon={<IconUpload />}  label="Upload Gambar"   sublabel="Validasi format & ukuran" active={step===1} done={step>1} />
-                <ProcessStep step={2} icon={<IconSearch />}  label="Ekstraksi ELA"   sublabel="Re-compress & diff piksel" active={step===2} done={step>2} />
-                <ProcessStep step={3} icon={<IconLayers />}  label="Inferensi Model" sublabel="EfficientNetB0 forward pass" active={step===3} done={step>3} />
-                <ProcessStep step={4} icon={<IconShield />}  label="Hybrid Scoring"  sublabel="EXIF + probability smoothing" active={step===4} done={step>4} last />
+                <ProcessStep step={1} icon={<IconUpload />}  label="Struktur Konten" sublabel="Validasi tipe piksel array" active={step===1} done={step>1} />
+                <ProcessStep step={2} icon={<IconSearch />}  label="Transformasi ELA" sublabel="Analisis peta deviasi matriks" active={step===2} done={step>2} />
+                <ProcessStep step={3} icon={<IconLayers />}  label="Konvolusi Ekstraktor" sublabel="EfficientNetB0 feature maps" active={step===3} done={step>3} last />
               </div>
             </div>
 
-            {/* Architecture */}
+            {/* Architecture Card */}
             <div className="rounded-xl border border-[#21262d] p-5" style={{ background: "#161b22" }}>
-              <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Arsitektur Model</p>
+              <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Arsitektur Jaringan</p>
               <div className="space-y-2.5">
                 {[
-                  { layer: "Input ELA Map",    shape: "224×224×3",  color: "bg-cyan-500" },
-                  { layer: "EfficientNetB0",   shape: "7×7×1280",   color: "bg-blue-500" },
-                  { layer: "GlobalAvgPool",    shape: "1280",       color: "bg-violet-500" },
-                  { layer: "Dense + Dropout",  shape: "256 → 64",   color: "bg-purple-500" },
-                  { layer: "Output Sigmoid",   shape: "1 (binary)", color: "bg-emerald-500" },
+                  { layer: "Input Layer (ELA Map)", shape: "224×224×3",  color: "bg-cyan-500" },
+                  { layer: "EfficientNetB0 Backbone", shape: "7×7×1280",   color: "bg-blue-500" },
+                  { layer: "GlobalAveragePooling2D", shape: "1280",       color: "bg-violet-500" },
+                  { layer: "Dense Head Layer",       shape: "1 (Sigmoid)", color: "bg-emerald-500" },
                 ].map((l, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className={`w-1 h-8 rounded-full ${l.color} opacity-70 flex-shrink-0`} />
@@ -524,14 +484,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Stats */}
+            {/* Performance Metric */}
             <div className="rounded-xl border border-[#21262d] p-5" style={{ background: "#161b22" }}>
-              <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Performa</p>
+              <p className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Metrik Jurnal Valid</p>
               <div className="space-y-3">
                 {[
-                  { label: "Val Accuracy", value: "86.7%", bar: 86.7, color: "bg-cyan-500" },
-                  { label: "AUC-ROC",      value: "0.942", bar: 94.2, color: "bg-blue-500" },
-                  { label: "Training Set", value: "120K",  bar: 100,  color: "bg-violet-500" },
+                  { label: "Validasi Akurasi", value: "86.7%", bar: 86.7, color: "bg-cyan-500" },
+                  { label: "Nilai Skor AUC-ROC", value: "0.942", bar: 94.2, color: "bg-blue-500" },
                 ].map((s, i) => (
                   <div key={i}>
                     <div className="flex justify-between text-xs mb-1">
@@ -546,16 +505,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Note */}
-            <div className="rounded-xl border border-amber-500/20 p-4 bg-amber-500/5">
-              <p className="text-xs text-amber-300/70 leading-relaxed">
-                <span className="text-amber-400 font-semibold block mb-1">Catatan Penting</span>
-                Foto yang dikirim via <span className="text-amber-300">WhatsApp, Instagram,</span> atau media sosial lain biasanya kehilangan metadata EXIF sehingga deteksi foto asli menjadi lebih sulit.
-              </p>
-            </div>
-
             <p className="text-xs text-[#484f58] text-center leading-relaxed">
-              Ammar Shafiy | &copy; 2026
+              Ammar Shafiy | NIM: IF0224009 <br /> Informatics Student Union (HIMAFORTI) · 2026
             </p>
           </div>
         </div>
